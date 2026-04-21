@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
@@ -52,11 +52,21 @@ export default function Transactions() {
     });
   };
 
-  const filteredRealisasi = realisasis.filter(r => {
-    const anggaran = anggarans.find(a => a.id === r.anggaranId);
-    return r.keterangan.toLowerCase().includes(search.toLowerCase()) || 
-           anggaran?.namaAkun.toLowerCase().includes(search.toLowerCase());
-  });
+  const filteredRealisasi = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    
+    // Hash map for budget account names
+    const budgetNames: Record<string, string> = {};
+    anggarans.forEach(a => {
+      budgetNames[a.id] = (a.namaAkun || '').toLowerCase();
+    });
+
+    return realisasis.filter(r => {
+      const ketMatch = (r.keterangan || '').toLowerCase().includes(searchLower);
+      const accMatch = (budgetNames[r.anggaranId] || '').includes(searchLower);
+      return ketMatch || accMatch;
+    });
+  }, [realisasis, anggarans, search]);
 
   const handleImportRealisasi = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

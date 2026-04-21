@@ -224,7 +224,7 @@ export default function App() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-10 pt-4 scroll-smooth">
-          <AnimatePresence mode="popLayout" initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activePage}
               initial={{ opacity: 0, y: 10 }}
