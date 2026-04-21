@@ -128,7 +128,19 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    try {
+      setSyncError(null);
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      console.error("Login Error:", error);
+      if (error.code === 'auth/popup-blocked') {
+        setSyncError("Popup login diblokir oleh browser. Silakan aktifkan popup untuk situs ini.");
+      } else if (error.code === 'auth/unauthorized-domain') {
+        setSyncError("Domain ini tidak terdaftar di Firebase Console. Pastikan URL aplikasi sudah ditambahkan ke Authorized Domains.");
+      } else {
+        setSyncError(`Gagal Masuk: ${error.message || 'Terjadi kesalahan sistem'}`);
+      }
+    }
   };
 
   const logout = async () => {
