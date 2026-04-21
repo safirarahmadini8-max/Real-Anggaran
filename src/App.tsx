@@ -224,27 +224,19 @@ export default function App() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-10 pt-4 scroll-smooth">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
               key={activePage}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.02 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
               className="max-w-7xl mx-auto h-full"
             >
-              {activePage === 'dashboard' && (
-                <Dashboard />
-              )}
-              {activePage === 'master' && (
-                <MasterData />
-              )}
-              {activePage === 'transactions' && (
-                <Transactions />
-              )}
-              {activePage === 'reports' && (
-                <Reports />
-              )}
+              {activePage === 'dashboard' && <Dashboard />}
+              {activePage === 'master' && <MasterData />}
+              {activePage === 'transactions' && <Transactions />}
+              {activePage === 'reports' && <Reports />}
             </motion.div>
           </AnimatePresence>
         </div>

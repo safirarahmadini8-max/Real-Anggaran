@@ -39,33 +39,47 @@ export default function Dashboard() {
 
   const chartData = useMemo(() => {
     if (skpds.length === 0) return [];
-    return skpds.map(skpd => {
-      const skpdAnggaran = anggarans
-        .filter(a => a.skpdId === skpd.id)
-        .reduce((sum, item) => sum + (Number(item.pagu) || 0), 0);
-      
-      const skpdRealisasi = realisasis
-        .filter(r => {
-          const anggaran = anggarans.find(a => a.id === r.anggaranId);
-          return anggaran?.skpdId === skpd.id;
-        })
-        .reduce((sum, item) => sum + (Number(item.nilai) || 0), 0);
 
+    // Pre-calculate aggregate sums to avoid O(N^2)
+    const skpdPagu: Record<string, number> = {};
+    const skpdReal: Record<string, number> = {};
+    
+    // Map anggaranId to skpdId for quick lookup
+    const anggaranToSkpd: Record<string, string> = {};
+    anggarans.forEach(a => {
+      anggaranToSkpd[a.id] = a.skpdId;
+      skpdPagu[a.skpdId] = (skpdPagu[a.skpdId] || 0) + (Number(a.pagu) || 0);
+    });
+
+    realisasis.forEach(r => {
+      const skpdId = anggaranToSkpd[r.anggaranId];
+      if (skpdId) {
+        skpdReal[skpdId] = (skpdReal[skpdId] || 0) + (Number(r.nilai) || 0);
+      }
+    });
+
+    return skpds.map(skpd => {
+      const pagu = skpdPagu[skpd.id] || 0;
+      const real = skpdReal[skpd.id] || 0;
       return {
         nama: skpd.nama,
-        Anggaran: skpdAnggaran,
-        Realisasi: skpdRealisasi,
-        Sisa: skpdAnggaran - skpdRealisasi
+        Anggaran: pagu,
+        Realisasi: real,
+        Sisa: pagu - real
       };
-    }).sort((a, b) => (b.Anggaran || 0) - (a.Anggaran || 0)).slice(0, 5);
+    }).sort((a, b) => b.Anggaran - a.Anggaran).slice(0, 5);
   }, [skpds, anggarans, realisasis]);
 
   const pieData = useMemo(() => {
+    // Pre-calculate to avoid O(N^2) inside loop
+    const anggaranDetails: Record<string, string> = {};
+    anggarans.forEach(a => { anggaranDetails[a.id] = a.namaAkun; });
+
     const data: Record<string, number> = {};
     realisasis.forEach(r => {
-      const anggaran = anggarans.find(a => a.id === r.anggaranId);
-      if (anggaran) {
-        data[anggaran.namaAkun] = (data[anggaran.namaAkun] || 0) + r.nilai;
+      const namaAkun = anggaranDetails[r.anggaranId];
+      if (namaAkun) {
+        data[namaAkun] = (data[namaAkun] || 0) + r.nilai;
       }
     });
 

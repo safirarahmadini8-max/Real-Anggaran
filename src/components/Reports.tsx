@@ -63,31 +63,43 @@ export default function Reports() {
   }, [realisasis, anggarans, selectedSkpdId, accountSearch]);
 
   const reportData = useMemo(() => {
+    // Pre-map anggaran to details for fast lookup
+    const anggaranMap: Record<string, Anggaran> = {};
+    anggarans.forEach(a => { anggaranMap[a.id] = a; });
+
     if (type === 'skpd') {
+      const skpdPagu: Record<string, number> = {};
+      const skpdReal: Record<string, number> = {};
+
+      anggarans.forEach(a => {
+        skpdPagu[a.skpdId] = (skpdPagu[a.skpdId] || 0) + a.pagu;
+      });
+
+      realisasis.forEach(r => {
+        const a = anggaranMap[r.anggaranId];
+        if (a) {
+          skpdReal[a.skpdId] = (skpdReal[a.skpdId] || 0) + r.nilai;
+        }
+      });
+
       const targetSkpds = selectedSkpdId 
         ? skpds.filter(s => s.id === selectedSkpdId)
         : skpds;
 
       return targetSkpds.map(skpd => {
-        const pagu = anggarans
-          .filter(a => a.skpdId === skpd.id)
-          .reduce((sum, item) => sum + item.pagu, 0);
-        const realisasi = realisasis
-          .filter(r => {
-            const a = anggarans.find(ang => ang.id === r.anggaranId);
-            return a?.skpdId === skpd.id;
-          })
-          .reduce((sum, item) => sum + item.nilai, 0);
+        const pagu = skpdPagu[skpd.id] || 0;
+        const real = skpdReal[skpd.id] || 0;
         return {
           id: skpd.id,
           label: skpd.nama,
           sublabel: skpd.kode,
           pagu,
-          realisasi,
-          sisa: pagu - realisasi,
-          persen: pagu > 0 ? realisasi / pagu : 0
+          realisasi: real,
+          sisa: pagu - real,
+          persen: pagu > 0 ? real / pagu : 0
         };
       }).sort((a, b) => b.pagu - a.pagu);
+
     } else if (type === 'akun' && accountSearch) {
       // Specialized detailed view for account search
       return filteredAnggarans.map(a => {
@@ -115,26 +127,17 @@ export default function Reports() {
         let label = '';
         let kode = '';
         
-        if (type === 'program') {
-          label = a.namaProgram || 'No Program';
-          kode = a.kodeProgram;
-        } else if (type === 'kegiatan') {
-          label = a.namaKegiatan || 'No Kegiatan';
-          kode = a.kodeKegiatan;
-        } else if (type === 'sub') {
-          label = a.namaSubKegiatan || 'No Sub Kegiatan';
-          kode = a.kodeSubKegiatan;
-        } else if (type === 'akun') {
-          label = a.namaAkun || 'No Rekening';
-          kode = a.kodeAkun;
-        }
+        if (type === 'program') { label = a.namaProgram || 'No Program'; kode = a.kodeProgram; }
+        else if (type === 'kegiatan') { label = a.namaKegiatan || 'No Kegiatan'; kode = a.kodeKegiatan; }
+        else if (type === 'sub') { label = a.namaSubKegiatan || 'No Sub Kegiatan'; kode = a.kodeSubKegiatan; }
+        else if (type === 'akun') { label = a.namaAkun || 'No Rekening'; kode = a.kodeAkun; }
 
         if (!groups[label]) groups[label] = { pagu: 0, realisasi: 0, kode: kode };
         groups[label].pagu += a.pagu;
       });
 
       filteredRealisasis.forEach(r => {
-        const a = anggarans.find(ang => ang.id === r.anggaranId);
+        const a = anggaranMap[r.anggaranId];
         if (a) {
           let label = '';
           if (type === 'program') label = a.namaProgram || 'No Program';
