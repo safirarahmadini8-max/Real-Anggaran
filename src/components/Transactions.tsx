@@ -77,40 +77,77 @@ export default function Transactions() {
             return;
           }
 
+          if (skpds.length === 0 || anggarans.length === 0) {
+            alert("Gagal Impor: Data Master (SKPD & Anggaran) masih kosong. Silakan isi Data Master terlebih dahulu.");
+            setIsSaving(false);
+            return;
+          }
+
+          let failedRows = 0;
+          let budgetNotFoundCount = 0;
+
           const importedData: Realisasi[] = results
             .map((row: any) => {
               const normalizedRow: any = {};
               Object.keys(row).forEach(key => {
                 const k = key.toLowerCase().replace(/[^a-z0-9]/g, '');
                 
+                // SKPD code mapping
                 if (k.includes('kodeskpd')) normalizedRow.skpd_kode = row[key];
-                if (k.includes('koderekening') || k.includes('kodeakun')) normalizedRow.kode_akun = row[key];
-                if (k === 'jumlah' || k === 'nilai' || k === 'pagu' || k.includes('jumlah') || k.includes('pagu')) normalizedRow.nilai = row[key];
                 
-                // Track hierarchy headers to support finding matching budget
+                // Account code mapping
+                if (k.includes('koderekening') || k.includes('kodeakun') || k.includes('rekening')) {
+                   // If it's the code (numbers), prioritize it
+                   if (String(row[key]).match(/[0-9]/)) normalizedRow.kode_akun = row[key];
+                }
+                
+                // Value/Amount mapping
+                if (k === 'jumlah' || k === 'nilai' || k === 'total' || k === 'pagu' || k.includes('jumlah') || k.includes('nilai')) {
+                   normalizedRow.nilai = row[key];
+                }
+                
+                // Hierarchy mapping
                 if (k.includes('kodeprogram')) normalizedRow.kode_program = row[key];
                 if (k.includes('kodekegiatan') && !k.includes('sub')) normalizedRow.kode_kegiatan = row[key];
                 if (k.includes('kodesub') || k.includes('kodesubkeg')) normalizedRow.kode_sub = row[key];
               });
               return normalizedRow;
             })
-            .filter((row: any) => row.skpd_kode != null && row.kode_akun != null && row.nilai != null)
+            .filter((row: any) => {
+              const isValid = row.skpd_kode != null && row.kode_akun != null && row.nilai != null;
+              if (!isValid) failedRows++;
+              return isValid;
+            })
             .map((row: any) => {
-              const skpd = skpds.find(s => s.kode === String(row.skpd_kode).trim());
+              const targetSkpdKode = String(row.skpd_kode).trim();
+              const targetAkunKode = String(row.kode_akun).trim();
               
-              // Find budget with more precision if hierarchy info is available
-              const anggaran = anggarans.find(a => {
-                const matchBase = a.skpdId === skpd?.id && a.kodeAkun === String(row.kode_akun).trim();
+              const skpd = skpds.find(s => s.kode === targetSkpdKode);
+              
+              if (!skpd) {
+                budgetNotFoundCount++;
+                return null;
+              }
+
+              // Find budget with multiple passes of precision
+              // Pass 1: Strict match with hierarchy if available
+              let anggaran = anggarans.find(a => {
+                const matchBase = a.skpdId === skpd.id && a.kodeAkun === targetAkunKode;
+                if (!matchBase) return false;
                 
-                // If the file has sub-activities/programs, use them to narrow down (useful if accounts repeat across programs)
-                if (row.kode_sub) return matchBase && a.kodeSubKegiatan === String(row.kode_sub).trim();
-                if (row.kode_kegiatan) return matchBase && a.kodeKegiatan === String(row.kode_kegiatan).trim();
-                if (row.kode_program) return matchBase && a.kodeProgram === String(row.kode_program).trim();
-                
-                return matchBase;
+                if (row.kode_sub) return a.kodeSubKegiatan === String(row.kode_sub).trim();
+                return true;
               });
 
-              if (!anggaran) return null;
+              // Pass 2: Loose match (just SKPD + Account) if Pass 1 failed
+              if (!anggaran) {
+                anggaran = anggarans.find(a => a.skpdId === skpd.id && a.kodeAkun === targetAkunKode);
+              }
+
+              if (!anggaran) {
+                budgetNotFoundCount++;
+                return null;
+              }
 
               // Clean numeric values
               let amount = 0;
@@ -146,10 +183,20 @@ export default function Transactions() {
 
           if (importedData.length > 0) {
             await saveRealisasisBulk(importedData);
-            alert(`Berhasil mengimpor ${importedData.length} data Realisasi.`);
+            let message = `Berhasil mengimpor ${importedData.length} data Realisasi.`;
+            if (budgetNotFoundCount > 0) {
+              message += `\n\nCatatan: ${budgetNotFoundCount} baris diabaikan karena Kode SKPD atau Kode Rekening tidak ditemukan di Data Master.`;
+            }
+            alert(message);
           } else {
-            const keys = Object.keys(results[0]).join(', ');
-            alert(`Gagal Impor Realisasi.\n\nKolom ditemukan: [${keys}]\n\nPastikan ada kolom:\n- Kode SKPD\n- Kode Rekening\n- Jumlah\n\nSerta pastikan data tersebut sudah ada di Data Master (Anggaran).`);
+            const keys = results[0] ? Object.keys(results[0]).join(', ') : 'File kosong';
+            let errorMsg = `Gagal Impor Realisasi.\n\nKolom ditemukan: [${keys}]\n\nPastikan ada kolom:\n- Kode SKPD\n- Kode Rekening\n- Jumlah\n\n`;
+            
+            if (skpds.length > 0 && budgetNotFoundCount > 0) {
+              errorMsg += `Semua data (${budgetNotFoundCount} baris) gagal dicocokkan dengan Anggaran di Data Master. Pastikan Kode SKPD dan Kode Rekening di Excel PERSIS sama dengan yang ada di sistem.`;
+            }
+            
+            alert(errorMsg);
           }
         } catch (error: any) {
           console.error("Import error:", error);
