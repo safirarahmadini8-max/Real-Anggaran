@@ -86,8 +86,6 @@ export default function Transactions() {
                 if (k.includes('kodeskpd')) normalizedRow.skpd_kode = row[key];
                 if (k.includes('koderekening') || k.includes('kodeakun')) normalizedRow.kode_akun = row[key];
                 if (k === 'jumlah' || k === 'nilai' || k === 'pagu' || k.includes('jumlah') || k.includes('pagu')) normalizedRow.nilai = row[key];
-                if (k === 'tanggal' || k.includes('tgl')) normalizedRow.tanggal = row[key];
-                if (k === 'keterangan' || k.includes('uraian') || k.includes('ket')) normalizedRow.keterangan = row[key];
                 
                 // Track hierarchy headers to support finding matching budget
                 if (k.includes('kodeprogram')) normalizedRow.kode_program = row[key];
@@ -133,27 +131,15 @@ export default function Transactions() {
               }
               if (isNaN(amount)) amount = 0;
 
-              // Handle Date
+              // dateStr will always be today for imports as per user request to hide these columns
               let dateStr = format(new Date(), 'yyyy-MM-dd');
-              if (row.tanggal) {
-                // Try parsing Excel date number
-                if (typeof row.tanggal === 'number') {
-                  const date = XLSX.SSF.parse_date_code(row.tanggal);
-                  dateStr = format(new Date(date.y, date.m - 1, date.d), 'yyyy-MM-dd');
-                } else {
-                  const d = new Date(row.tanggal);
-                  if (isValid(d)) {
-                    dateStr = format(d, 'yyyy-MM-dd');
-                  }
-                }
-              }
 
               return {
                 id: generateId(),
                 anggaranId: anggaran.id,
                 tanggal: dateStr,
                 nilai: amount,
-                keterangan: String(row.keterangan || 'Imported Transaction').trim(),
+                keterangan: 'Imported via Excel',
               };
             })
             .filter((r): r is Realisasi => r !== null);
@@ -418,7 +404,7 @@ export default function Transactions() {
             Sistem akan mencocokkan transaksi berdasarkan hierarki kode yang tersedia.
           </p>
           <div className="mt-3 inline-block px-3 py-1.5 bg-slate-50 border border-bento-border rounded-lg font-mono text-[10px] text-bento-primary font-bold overflow-hidden text-ellipsis whitespace-nowrap max-w-full">
-            Kode SKPD, SKPD, Kode Program, Program, Kode Kegiatan, Kegiatan, Kode Sub Kegaitan, Sub Kegiatan, Kode Rekening, Rekening, Jumlah, Tanggal, Keterangan
+            Kode SKPD, SKPD, Kode Program, Program, Kode Kegiatan, Kegiatan, Kode Sub Kegaitan, Sub Kegiatan, Kode Rekening, Rekening, Jumlah
           </div>
         </div>
       </div>
