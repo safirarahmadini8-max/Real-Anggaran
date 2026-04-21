@@ -8,7 +8,8 @@ import {
   Filter,
   X,
   Upload,
-  TrendingUp
+  TrendingUp,
+  Edit3
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { SKPD, Anggaran, Realisasi } from '../lib/types';
@@ -26,6 +27,7 @@ export default function Transactions() {
   const [search, setSearch] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     anggaranId: '',
@@ -34,23 +36,39 @@ export default function Transactions() {
     keterangan: ''
   });
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.anggaranId || formData.nilai <= 0) return;
 
-    const newRealisasi: Realisasi = {
-      id: generateId(),
+    const realisasiData: Realisasi = {
+      id: editingId || generateId(),
       ...formData
     };
 
-    saveRealisasi(newRealisasi);
-    setShowAdd(false);
+    try {
+      await saveRealisasi(realisasiData);
+      setShowAdd(false);
+      setEditingId(null);
+      setFormData({
+        anggaranId: '',
+        tanggal: format(new Date(), 'yyyy-MM-dd'),
+        nilai: 0,
+        keterangan: ''
+      });
+    } catch (err) {
+      alert("Gagal menyimpan transaksi.");
+    }
+  };
+
+  const handleEdit = (item: Realisasi) => {
+    setEditingId(item.id);
     setFormData({
-      anggaranId: '',
-      tanggal: format(new Date(), 'yyyy-MM-dd'),
-      nilai: 0,
-      keterangan: ''
+      anggaranId: item.anggaranId,
+      tanggal: item.tanggal,
+      nilai: item.nilai,
+      keterangan: item.keterangan || ''
     });
+    setShowAdd(true);
   };
 
   const filteredRealisasi = useMemo(() => {
@@ -306,8 +324,16 @@ export default function Transactions() {
         <div className="fixed inset-0 bg-bento-accent/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-bento-border animate-in fade-in zoom-in duration-300">
             <div className="p-8 border-b border-bento-border flex items-center justify-between bg-slate-50/50">
-              <h4 className="font-black text-bento-accent uppercase tracking-tight">Input Transaksi Baru</h4>
-              <button onClick={() => setShowAdd(false)} className="text-bento-text-sub hover:text-bento-accent transition-transform hover:scale-110">
+              <h4 className="font-black text-bento-accent uppercase tracking-tight">
+                {editingId ? 'Edit Transaksi' : 'Input Transaksi Baru'}
+              </h4>
+              <button 
+                onClick={() => {
+                  setShowAdd(false);
+                  setEditingId(null);
+                }} 
+                className="text-bento-text-sub hover:text-bento-accent transition-transform hover:scale-110"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -447,20 +473,28 @@ export default function Transactions() {
                       </span>
                     </td>
                     <td className="px-6 py-5 text-right">
-                      <button 
-                         onClick={async () => {
-                           if (window.confirm('Hapus transaksi ini?')) {
-                             try {
-                               await deleteRealisasi(item.id);
-                             } catch (err) {
-                               alert("Gagal menghapus.");
+                      <div className="flex items-center justify-end gap-1">
+                        <button 
+                           onClick={() => handleEdit(item)}
+                           className="text-bento-text-sub hover:text-bento-primary transition-colors p-2 rounded-lg hover:bg-blue-50"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button 
+                           onClick={async () => {
+                             if (window.confirm('Hapus transaksi ini?')) {
+                               try {
+                                 await deleteRealisasi(item.id);
+                               } catch (err) {
+                                 alert("Gagal menghapus.");
+                               }
                              }
-                           }
-                         }}
-                        className="text-bento-text-sub hover:text-bento-danger transition-colors p-2 rounded-lg hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                           }}
+                          className="text-bento-text-sub hover:text-bento-danger transition-colors p-2 rounded-lg hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )

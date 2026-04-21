@@ -23,6 +23,7 @@ export default function Reports() {
   const [accountSearch, setAccountSearch] = useState<string>('');
   const [skpdSearch, setSkpdSearch] = useState<string>('');
   const [showSkpdList, setShowSkpdList] = useState(false);
+  const [drillDownFilter, setDrillDownFilter] = useState<{ type: ReportType; value: string } | null>(null);
 
   const filteredSkpds = useMemo(() => {
     return skpds
@@ -33,6 +34,17 @@ export default function Reports() {
   const filteredAnggarans = useMemo(() => {
     let result = anggarans;
     if (selectedSkpdId) result = result.filter(a => a.skpdId === selectedSkpdId);
+    
+    if (drillDownFilter) {
+      if (drillDownFilter.type === 'sub') {
+        result = result.filter(a => a.namaSubKegiatan === drillDownFilter.value);
+      } else if (drillDownFilter.type === 'program') {
+        result = result.filter(a => a.namaProgram === drillDownFilter.value);
+      } else if (drillDownFilter.type === 'kegiatan') {
+        result = result.filter(a => a.namaKegiatan === drillDownFilter.value);
+      }
+    }
+
     if (accountSearch) {
       result = result.filter(a => 
         a.namaAkun.toLowerCase().includes(accountSearch.toLowerCase()) ||
@@ -40,68 +52,29 @@ export default function Reports() {
       );
     }
     return result;
-  }, [anggarans, selectedSkpdId, accountSearch]);
+  }, [anggarans, selectedSkpdId, accountSearch, drillDownFilter]);
 
   const filteredRealisasis = useMemo(() => {
     let result = realisasis;
-    if (selectedSkpdId) {
-      result = result.filter(r => {
-        const a = anggarans.find(ang => ang.id === r.anggaranId);
-        return a?.skpdId === selectedSkpdId;
-      });
-    }
-    if (accountSearch) {
-      result = result.filter(r => {
-        const a = anggarans.find(ang => ang.id === r.anggaranId);
-        return a && (
-          a.namaAkun.toLowerCase().includes(accountSearch.toLowerCase()) ||
-          a.kodeAkun.toLowerCase().includes(accountSearch.toLowerCase())
-        );
-      });
-    }
-    return result;
-  }, [realisasis, anggarans, selectedSkpdId, accountSearch]);
+    
+    // Efficiently filter realisasi based on current visible budgets
+    const visibleBudgetIds = new Set(filteredAnggarans.map(a => a.id));
+    return result.filter(r => visibleBudgetIds.has(r.anggaranId));
+  }, [realisasis, filteredAnggarans]);
+
+  const handleDrillDown = (item: any) => {
+    if (type === 'akun') return; // already at deepest level
+    setDrillDownFilter({ type: type, value: item.label });
+    setType('akun');
+  };
 
   const reportData = useMemo(() => {
     // Pre-map anggaran to details for fast lookup
     const anggaranMap: Record<string, Anggaran> = {};
     anggarans.forEach(a => { anggaranMap[a.id] = a; });
 
-    if (type === 'skpd') {
-      const skpdPagu: Record<string, number> = {};
-      const skpdReal: Record<string, number> = {};
-
-      anggarans.forEach(a => {
-        skpdPagu[a.skpdId] = (skpdPagu[a.skpdId] || 0) + a.pagu;
-      });
-
-      realisasis.forEach(r => {
-        const a = anggaranMap[r.anggaranId];
-        if (a) {
-          skpdReal[a.skpdId] = (skpdReal[a.skpdId] || 0) + r.nilai;
-        }
-      });
-
-      const targetSkpds = selectedSkpdId 
-        ? skpds.filter(s => s.id === selectedSkpdId)
-        : skpds;
-
-      return targetSkpds.map(skpd => {
-        const pagu = skpdPagu[skpd.id] || 0;
-        const real = skpdReal[skpd.id] || 0;
-        return {
-          id: skpd.id,
-          label: skpd.nama,
-          sublabel: skpd.kode,
-          pagu,
-          realisasi: real,
-          sisa: pagu - real,
-          persen: pagu > 0 ? real / pagu : 0
-        };
-      }).sort((a, b) => b.pagu - a.pagu);
-
-    } else if (type === 'akun' && accountSearch) {
-      // Specialized detailed view for account search
+    if (drillDownFilter || type === 'akun') {
+      // If we are drill-downed or manually chose 'akun', show account-level details
       return filteredAnggarans.map(a => {
         const realisasi = realisasis
           .filter(r => r.anggaranId === a.id)
@@ -112,14 +85,14 @@ export default function Reports() {
         return {
           id: a.id,
           label: a.namaAkun,
-          sublabel: `${a.kodeAkun} • ${skpd?.nama || 'Unknown SKPD'} • ${a.namaProgram}`,
+          sublabel: `${a.kodeAkun} • ${skpd?.nama || 'Unknown SKPD'} • ${a.namaProgram} • ${a.namaSubKegiatan}`,
           pagu: a.pagu,
           realisasi,
           sisa: a.pagu - realisasi,
           persen: a.pagu > 0 ? realisasi / a.pagu : 0
         };
       }).sort((a, b) => b.pagu - a.pagu);
-    } else {
+    } else if (type === 'skpd') {
       // Group by various hierarchical levels
       const groups: Record<string, { pagu: number, realisasi: number, kode: string }> = {};
       
@@ -306,17 +279,32 @@ export default function Reports() {
       <div className="bento-card p-0 overflow-hidden print:border-none print:shadow-none">
         <div className="p-10 border-b border-bento-border flex justify-between items-center bg-slate-50/50">
           <div>
-            <h2 className="text-2xl font-black text-bento-accent tracking-tight uppercase">
-              LAPORAN REALISASI ANGGARAN
-            </h2>
+            <div className="flex items-center gap-3 mb-2">
+              <h2 className="text-2xl font-black text-bento-accent tracking-tight uppercase">
+                LAPORAN REALISASI ANGGARAN
+              </h2>
+              {drillDownFilter && (
+                <button 
+                  onClick={() => {
+                    setDrillDownFilter(null);
+                    setType('sub'); // Return to sub activity view
+                  }}
+                  className="px-3 py-1 bg-bento-accent text-white text-[10px] font-bold rounded-lg hover:bg-slate-800 transition-all flex items-center gap-1.5 no-print"
+                >
+                  <ChevronDown className="w-3 h-3 rotate-90" />
+                  Kembali
+                </button>
+              )}
+            </div>
             <p className="text-sm text-bento-text-sub font-bold mt-1 uppercase tracking-widest">
               Basis {
+                drillDownFilter ? `Rincian Rekening pada ${drillDownFilter.value}` :
                 type === 'skpd' ? 'Unit Kerja (SKPD)' : 
                 type === 'program' ? 'Program' : 
                 type === 'kegiatan' ? 'Kegiatan' : 
                 type === 'sub' ? 'Sub Kegiatan' : 
                 'Mata Anggaran (Rekening)'
-              } {selectedSkpdId ? `• ${skpds.find(s => s.id === selectedSkpdId)?.nama}` : ''} • 2026
+              } {selectedSkpdId && !drillDownFilter ? `• ${skpds.find(s => s.id === selectedSkpdId)?.nama}` : ''} • 2026
             </p>
           </div>
           <div className="text-right">
@@ -356,7 +344,14 @@ export default function Reports() {
             </thead>
             <tbody className="divide-y divide-bento-border">
               {reportData.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50/10">
+                <tr 
+                  key={row.id} 
+                  onClick={() => handleDrillDown(row)}
+                  className={cn(
+                    "transition-all duration-200",
+                    type !== 'akun' ? "hover:bg-slate-50 cursor-pointer" : "hover:bg-slate-50/10"
+                  )}
+                >
                   <td className="px-8 py-5">
                     <div className="flex flex-col">
                       <span className="text-sm font-bold text-bento-accent">{row.label}</span>

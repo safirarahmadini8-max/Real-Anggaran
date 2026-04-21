@@ -10,7 +10,9 @@ import {
   Database,
   ChevronLeft,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  X,
+  Edit3
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { SKPD, Anggaran } from '../lib/types';
@@ -22,6 +24,7 @@ const ITEMS_PER_PAGE = 50;
 export default function MasterData() {
   const { 
     skpds, anggarans, dataLoading, quotaExceeded,
+    saveSKPD, saveAnggaran,
     saveSKPDsBulk, saveAnggaransBulk, 
     deleteSKPD, deleteAnggaran,
     deleteAllSKPDs, deleteAllAnggarans
@@ -31,6 +34,85 @@ export default function MasterData() {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [skpdForm, setSkpdForm] = useState({ kode: '', nama: '' });
+  const [anggaranForm, setAnggaranForm] = useState({
+    skpdId: '',
+    kodeProgram: '',
+    namaProgram: '',
+    kodeKegiatan: '',
+    namaKegiatan: '',
+    kodeSubKegiatan: '',
+    namaSubKegiatan: '',
+    kodeAkun: '',
+    namaAkun: '',
+    pagu: 0
+  });
+
+  const handleOpenAdd = () => {
+    setEditingId(null);
+    setSkpdForm({ kode: '', nama: '' });
+    setAnggaranForm({
+      skpdId: '',
+      kodeProgram: '',
+      namaProgram: '',
+      kodeKegiatan: '',
+      namaKegiatan: '',
+      kodeSubKegiatan: '',
+      namaSubKegiatan: '',
+      kodeAkun: '',
+      namaAkun: '',
+      pagu: 0
+    });
+    setShowModal(true);
+  };
+
+  const handleEdit = (item: any) => {
+    setEditingId(item.id);
+    if (tab === 'skpd') {
+      setSkpdForm({ kode: item.kode, nama: item.nama });
+    } else {
+      setAnggaranForm({
+        skpdId: item.skpdId,
+        kodeProgram: item.kodeProgram || '',
+        namaProgram: item.namaProgram || '',
+        kodeKegiatan: item.kodeKegiatan || '',
+        namaKegiatan: item.namaKegiatan || '',
+        kodeSubKegiatan: item.kodeSubKegiatan || '',
+        namaSubKegiatan: item.namaSubKegiatan || '',
+        kodeAkun: item.kodeAkun,
+        namaAkun: item.namaAkun,
+        pagu: item.pagu
+      });
+    }
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      if (tab === 'skpd') {
+        await saveSKPD({
+          id: editingId || generateId(),
+          ...skpdForm
+        });
+      } else {
+        await saveAnggaran({
+          id: editingId || generateId(),
+          ...anggaranForm
+        });
+      }
+      setShowModal(false);
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Gagal menyimpan data.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleImportSKPD = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -308,8 +390,202 @@ export default function MasterData() {
               onChange={tab === 'skpd' ? handleImportSKPD : handleImportAnggaran}
             />
           </label>
+          <button 
+            onClick={handleOpenAdd}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-5 py-2.5 bg-bento-primary text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-blue-700 transition-all shadow-md shadow-blue-100 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah</span>
+          </button>
         </div>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-bento-accent/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] w-full max-w-2xl shadow-2xl overflow-hidden border border-bento-border animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
+            <div className="p-8 border-b border-bento-border flex items-center justify-between bg-slate-50/50 sticky top-0 z-10">
+              <h4 className="font-black text-bento-accent uppercase tracking-tight">
+                {editingId ? 'Edit' : 'Tambah'} {tab === 'skpd' ? 'SKPD' : 'Anggaran'}
+              </h4>
+              <button 
+                onClick={() => setShowModal(false)} 
+                className="text-bento-text-sub hover:text-bento-accent transition-transform hover:scale-110"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              {tab === 'skpd' ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Kode SKPD</label>
+                      <input 
+                        type="text"
+                        required
+                        value={skpdForm.kode}
+                        onChange={e => setSkpdForm({...skpdForm, kode: e.target.value})}
+                        className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-bold text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all placeholder:font-normal"
+                        placeholder="Contoh: 1.01.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Nama SKPD</label>
+                      <input 
+                        type="text"
+                        required
+                        value={skpdForm.nama}
+                        onChange={e => setSkpdForm({...skpdForm, nama: e.target.value})}
+                        className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-bold text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all placeholder:font-normal"
+                        placeholder="Contoh: Dinas Kesehatan"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Unit Kerja (SKPD)</label>
+                      <select 
+                        required
+                        value={anggaranForm.skpdId}
+                        onChange={e => setAnggaranForm({...anggaranForm, skpdId: e.target.value})}
+                        className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-bold text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                      >
+                        <option value="">Pilih SKPD...</option>
+                        {skpds.map(s => <option key={s.id} value={s.id}>[{s.kode}] {s.nama}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Pagu Anggaran (Rp)</label>
+                      <input 
+                        type="number"
+                        required
+                        value={anggaranForm.pagu || ''}
+                        onChange={e => setAnggaranForm({...anggaranForm, pagu: Number(e.target.value)})}
+                        className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-black text-bento-primary focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-4 border-b border-dashed border-bento-border">
+                    <div className="space-y-4">
+                       <div>
+                        <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Kode Program</label>
+                        <input 
+                          type="text"
+                          value={anggaranForm.kodeProgram}
+                          onChange={e => setAnggaranForm({...anggaranForm, kodeProgram: e.target.value})}
+                          className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-medium text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                          placeholder="Kode Program"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Kode Kegiatan</label>
+                        <input 
+                          type="text"
+                          value={anggaranForm.kodeKegiatan}
+                          onChange={e => setAnggaranForm({...anggaranForm, kodeKegiatan: e.target.value})}
+                          className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-medium text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                          placeholder="Kode Kegiatan"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Kode Sub Kegiatan</label>
+                        <input 
+                          type="text"
+                          value={anggaranForm.kodeSubKegiatan}
+                          onChange={e => setAnggaranForm({...anggaranForm, kodeSubKegiatan: e.target.value})}
+                          className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-medium text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                          placeholder="Kode Sub Kegiatan"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Nama Program</label>
+                        <input 
+                          type="text"
+                          value={anggaranForm.namaProgram}
+                          onChange={e => setAnggaranForm({...anggaranForm, namaProgram: e.target.value})}
+                          className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-medium text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all outline-none"
+                          placeholder="Nama Program"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Nama Kegiatan</label>
+                        <input 
+                          type="text"
+                          value={anggaranForm.namaKegiatan}
+                          onChange={e => setAnggaranForm({...anggaranForm, namaKegiatan: e.target.value})}
+                          className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-medium text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                          placeholder="Nama Kegiatan"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-bento-text-sub uppercase tracking-widest mb-2">Nama Sub Kegiatan</label>
+                        <input 
+                          type="text"
+                          value={anggaranForm.namaSubKegiatan}
+                          onChange={e => setAnggaranForm({...anggaranForm, namaSubKegiatan: e.target.value})}
+                          className="w-full bg-slate-50 border border-bento-border rounded-xl px-4 py-3 text-sm font-medium text-bento-accent focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                          placeholder="Nama Sub Kegiatan"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-bento-primary/5 p-6 rounded-2xl border border-bento-primary/10">
+                    <div>
+                      <label className="block text-[11px] font-bold text-bento-primary uppercase tracking-widest mb-2">Kode Rekening</label>
+                      <input 
+                        type="text"
+                        required
+                        value={anggaranForm.kodeAkun}
+                        onChange={e => setAnggaranForm({...anggaranForm, kodeAkun: e.target.value})}
+                        className="w-full bg-white border border-bento-primary/20 rounded-xl px-4 py-3 text-sm font-mono font-bold text-bento-primary focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                        placeholder="Contoh: 5.1.01..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-bento-primary uppercase tracking-widest mb-2">Nama Rekening Belanja</label>
+                      <input 
+                        type="text"
+                        required
+                        value={anggaranForm.namaAkun}
+                        onChange={e => setAnggaranForm({...anggaranForm, namaAkun: e.target.value})}
+                        className="w-full bg-white border border-bento-primary/20 rounded-xl px-4 py-3 text-sm font-bold text-bento-primary focus:ring-2 focus:ring-bento-primary/20 outline-none transition-all"
+                        placeholder="Nama Mata Anggaran"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-4 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-widest text-bento-text-sub bg-slate-100 rounded-xl hover:bg-slate-200 transition-all font-bold"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-widest text-white bg-bento-primary rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 disabled:opacity-50"
+                >
+                  {isSaving ? 'Menyimpan...' : (editingId ? 'Update Data' : 'Simpan Data')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="bento-card p-0 overflow-hidden">
         <div className="overflow-x-auto">
@@ -382,12 +658,22 @@ export default function MasterData() {
                     <td className="px-8 py-5 text-sm font-mono text-bento-primary font-bold">{skpd.id.startsWith('temp-') ? '(Baru)' : skpd.kode}</td>
                     <td className="px-8 py-5 text-sm font-bold text-bento-accent">{skpd.nama}</td>
                     <td className="px-8 py-5 text-sm text-right">
-                      <button 
-                        onClick={() => deleteSKPD(skpd.id)}
-                        className="text-bento-text-sub hover:text-bento-danger transition-colors p-2 rounded-lg hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button 
+                           onClick={() => handleEdit(skpd)}
+                           className="text-bento-text-sub hover:text-bento-primary transition-colors p-2 rounded-lg hover:bg-blue-50"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (window.confirm('Hapus SKPD ini?')) deleteSKPD(skpd.id)
+                          }}
+                          className="text-bento-text-sub hover:text-bento-danger transition-colors p-2 rounded-lg hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -431,12 +717,22 @@ export default function MasterData() {
                         {formatIDR(anggaran.pagu)}
                       </td>
                       <td className="px-8 py-5 text-sm text-right align-top">
-                        <button 
-                          onClick={() => deleteAnggaran(anggaran.id)}
-                          className="text-bento-text-sub hover:text-bento-danger transition-colors p-2 rounded-lg hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button 
+                            onClick={() => handleEdit(anggaran)}
+                            className="text-bento-text-sub hover:text-bento-primary transition-colors p-2 rounded-lg hover:bg-blue-50"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (window.confirm('Hapus Anggaran ini?')) deleteAnggaran(anggaran.id)
+                            }}
+                            className="text-bento-text-sub hover:text-bento-danger transition-colors p-2 rounded-lg hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
