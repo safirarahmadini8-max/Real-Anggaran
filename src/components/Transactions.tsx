@@ -25,6 +25,7 @@ export default function Transactions() {
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   
   const [formData, setFormData] = useState({
     anggaranId: '',
@@ -71,7 +72,7 @@ export default function Transactions() {
   const handleImportRealisasi = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsSaving(true);
+      setIsImporting(true);
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
@@ -83,13 +84,13 @@ export default function Transactions() {
           
           if (results.length === 0) {
             alert("File Excel kosong atau tidak terbaca.");
-            setIsSaving(false);
+            setIsImporting(false);
             return;
           }
 
           if (skpds.length === 0 || anggarans.length === 0) {
             alert("Gagal Impor: Data Master (SKPD & Anggaran) masih kosong. Silakan isi Data Master terlebih dahulu.");
-            setIsSaving(false);
+            setIsImporting(false);
             return;
           }
 
@@ -212,13 +213,13 @@ export default function Transactions() {
           console.error("Import error:", error);
           alert(`Gagal membaca file Excel: ${error.message || 'Format tidak dikenal'}`);
         } finally {
-          setIsSaving(false);
+          setIsImporting(false);
           if (e.target) e.target.value = '';
         }
       };
       reader.onerror = () => {
         alert("Gagal membaca file.");
-        setIsSaving(false);
+        setIsImporting(false);
       };
       reader.readAsArrayBuffer(file);
     }
@@ -245,9 +246,9 @@ export default function Transactions() {
           </div>
           <label className={cn(
             "flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-sm",
-            (isSaving) ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-bento-accent text-white hover:bg-slate-800 cursor-pointer"
+            (isImporting) ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-bento-accent text-white hover:bg-slate-800 cursor-pointer"
           )}>
-            {isSaving ? (
+            {isImporting ? (
               <>
                 <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                 <span>Sinkronisasi...</span>
@@ -260,7 +261,7 @@ export default function Transactions() {
                   type="file" 
                   accept=".xlsx,.xls" 
                   className="hidden" 
-                  disabled={isSaving}
+                  disabled={isImporting}
                   onChange={handleImportRealisasi}
                 />
               </>
