@@ -24,7 +24,7 @@ export default function Transactions() {
 
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     anggaranId: '',
@@ -258,16 +258,26 @@ export default function Transactions() {
           </label>
           <button 
             onClick={async () => {
-              if (window.confirm('Apakah Anda yakin ingin menghapus SEMUA data realisasi? Tindakan ini tidak dapat dibatalkan.')) {
-                setIsSaving(true);
-                await deleteAllRealisasi();
-                setIsSaving(false);
+              if (window.confirm('Apakah Anda yakin ingin menghapus SEMUA data realisasi?')) {
+                setIsDeleting(true);
+                try {
+                  await deleteAllRealisasi();
+                } catch (error) {
+                  console.error("Delete all error:", error);
+                  alert("Gagal menghapus data. Silakan coba lagi.");
+                } finally {
+                  setIsDeleting(false);
+                }
               }
             }}
-            disabled={isSaving || realisasis.length === 0}
+            disabled={isDeleting || realisasis.length === 0}
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-200 text-bento-danger rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Trash2 className="w-4 h-4" />
+            {isDeleting ? (
+              <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
             <span>Hapus Semua</span>
           </button>
           <button 
@@ -427,7 +437,15 @@ export default function Transactions() {
                     </td>
                     <td className="px-6 py-5 text-right">
                       <button 
-                         onClick={() => deleteRealisasi(item.id)}
+                         onClick={async () => {
+                           if (window.confirm('Hapus transaksi ini?')) {
+                             try {
+                               await deleteRealisasi(item.id);
+                             } catch (err) {
+                               alert("Gagal menghapus.");
+                             }
+                           }
+                         }}
                         className="text-bento-text-sub hover:text-bento-danger transition-colors p-2 rounded-lg hover:bg-red-50"
                       >
                         <Trash2 className="w-4 h-4" />
