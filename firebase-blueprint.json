@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "SKPD": {
+      "title": "SKPD",
+      "description": "Satuan Kerja Perangkat Daerah",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kode": { "type": "string" },
+        "nama": { "type": "string" }
+      },
+      "required": ["id", "kode", "nama"]
+    },
+    "Anggaran": {
+      "title": "Anggaran",
+      "description": "Data Pagu Anggaran SKPD",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "skpdId": { "type": "string" },
+        "kodeProgram": { "type": "string" },
+        "namaProgram": { "type": "string" },
+        "kodeKegiatan": { "type": "string" },
+        "namaKegiatan": { "type": "string" },
+        "kodeSubKegiatan": { "type": "string" },
+        "namaSubKegiatan": { "type": "string" },
+        "kodeAkun": { "type": "string" },
+        "namaAkun": { "type": "string" },
+        "pagu": { "type": "number" }
+      },
+      "required": ["id", "skpdId", "kodeAkun", "namaAkun", "pagu"]
+    },
+    "Realisasi": {
+      "title": "Realisasi",
+      "description": "Data Transaksi Realisasi Anggaran",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "anggaranId": { "type": "string" },
+        "nilai": { "type": "number" },
+        "tanggal": { "type": "string", "format": "date" },
+        "keterangan": { "type": "string" }
+      },
+      "required": ["id", "anggaranId", "nilai", "tanggal"]
+    }
+  },
+  "firestore": {
+    "/skpds/{skpdId}": {
+      "schema": "SKPD",
+      "description": "Koleksi data SKPD"
+    },
+    "/anggarans/{anggaranId}": {
+      "schema": "Anggaran",
+      "description": "Koleksi data Pagu Anggaran"
+    },
+    "/realisasis/{realisasiId}": {
+      "schema": "Realisasi",
+      "description": "Koleksi data Realisasi Anggaran"
+    }
+  }
+}

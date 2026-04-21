@@ -367,18 +367,19 @@ export default function Transactions() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b border-bento-border">
-                <th className="px-8 py-5 text-[11px] font-bold text-bento-text-sub uppercase tracking-widest">Tanggal</th>
-                <th className="px-8 py-5 text-[11px] font-bold text-bento-text-sub uppercase tracking-widest">Akun / SKPD</th>
-                <th className="px-8 py-5 text-[11px] font-bold text-bento-text-sub uppercase tracking-widest">Keterangan</th>
-                <th className="px-8 py-5 text-[11px] font-bold text-bento-text-sub uppercase tracking-widest text-right">Nilai</th>
-                <th className="px-8 py-5 text-[11px] font-bold text-bento-text-sub uppercase tracking-widest text-right">Opsi</th>
+              <tr className="bg-slate-50 border-b border-bento-border text-[10px] font-bold text-bento-text-sub uppercase tracking-widest">
+                <th className="px-6 py-5">Tanggal</th>
+                <th className="px-6 py-5">Unit Kerja</th>
+                <th className="px-6 py-5">Program / Kegiatan</th>
+                <th className="px-6 py-5">Sub Kegiatan / Rekening</th>
+                <th className="px-6 py-5 text-right whitespace-nowrap">Nilai (Rp)</th>
+                <th className="px-6 py-5 text-right">Opsi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-bento-border">
               {quotaExceeded && (
                 <tr>
-                   <td colSpan={5} className="px-8 py-20 text-center">
+                   <td colSpan={6} className="px-8 py-20 text-center">
                     <div className="flex flex-col items-center gap-3 text-red-500">
                       <TrendingUp className="w-10 h-10 rotate-180 opacity-50" />
                       <p className="text-sm font-bold uppercase tracking-widest">Batas Kuota Tercapai</p>
@@ -392,27 +393,39 @@ export default function Transactions() {
                 const skpd = skpds.find(s => s.id === anggaran?.skpdId);
                 return (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-all duration-200">
-                    <td className="px-8 py-5 text-bento-text-sub font-mono font-bold">
+                    <td className="px-6 py-5 text-bento-text-sub font-mono font-bold whitespace-nowrap">
                       {(() => {
                         const d = new Date(item.tanggal);
                         return isValid(d) ? format(d, 'dd/MM/yyyy') : item.tanggal;
                       })()}
                     </td>
-                    <td className="px-8 py-5">
+                    <td className="px-6 py-5">
                       <div className="flex flex-col">
-                        <span className="font-bold text-bento-accent leading-tight">{anggaran?.namaAkun || 'No Account'}</span>
-                        <span className="text-[10px] text-bento-text-sub font-bold uppercase tracking-tighter truncate max-w-[200px]">{skpd?.nama}</span>
+                        <span className="font-bold text-bento-accent leading-tight">{skpd?.kode}</span>
+                        <span className="text-[10px] text-bento-text-sub font-bold uppercase tracking-tighter truncate max-w-[150px]">{skpd?.nama}</span>
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-bento-text-sub font-medium italic">
-                      {item.keterangan || '-'}
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col max-w-[250px]">
+                        <span className="font-bold text-bento-accent line-clamp-1">{anggaran?.namaProgram}</span>
+                        <span className="text-[10px] text-bento-text-sub font-bold uppercase line-clamp-1">{anggaran?.namaKegiatan}</span>
+                      </div>
                     </td>
-                    <td className="px-8 py-5 text-right">
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col max-w-[300px]">
+                        <span className="font-bold text-bento-accent line-clamp-1">{anggaran?.namaSubKegiatan}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px] font-black text-bento-text-sub uppercase tracking-tighter border border-bento-border">{anggaran?.kodeAkun}</span>
+                          <span className="text-[10px] text-bento-text-sub font-bold truncate">{anggaran?.namaAkun}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-right">
                       <span className="font-extrabold text-bento-success">
                         {formatIDR(item.nilai)}
                       </span>
                     </td>
-                    <td className="px-8 py-5 text-right">
+                    <td className="px-6 py-5 text-right">
                       <button 
                          onClick={() => deleteRealisasi(item.id)}
                         className="text-bento-text-sub hover:text-bento-danger transition-colors p-2 rounded-lg hover:bg-red-50"
@@ -425,7 +438,7 @@ export default function Transactions() {
               })}
               {filteredRealisasi.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center">
+                  <td colSpan={6} className="px-8 py-20 text-center">
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-bento-border border-dashed">
                       <ArrowRightLeft className="w-7 h-7 text-bento-text-sub/40" />
                     </div>
