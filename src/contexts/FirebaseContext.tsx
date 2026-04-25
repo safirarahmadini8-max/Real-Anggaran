@@ -121,8 +121,10 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
     if (error.message?.includes('Quota exceeded')) {
       setQuotaExceeded(true);
       setSyncError("Batas kuota database tercapai. Beberapa fitur mungkin terbatas.");
+    } else if (error.message?.includes('insufficient permissions')) {
+      setSyncError(`Izin ditolak untuk ${path}. Pastikan Anda sudah login dengan akun yang benar.`);
     } else {
-      setSyncError(`Terjadi kesalahan saat memproses data ${path}. Silakan coba lagi.`);
+      setSyncError(`Sinkronisasi Gagal: ${error.message || 'Terjadi kesalahan sistem'}`);
     }
   };
 
@@ -150,75 +152,154 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   // SKPD Operations
   const saveSKPD = async (data: Partial<SKPD>) => {
     if (!data.id) return;
-    await setDoc(doc(db, 'skpds', data.id), data);
+    try {
+      await setDoc(doc(db, 'skpds', data.id), data);
+    } catch (err) {
+      handleFirestoreError(err, 'write', `skpds/${data.id}`);
+      throw err;
+    }
   };
   const saveSKPDsBulk = async (data: Partial<SKPD>[]) => {
-    const batch = writeBatch(db);
-    data.forEach(item => {
-      if (item.id) batch.set(doc(db, 'skpds', item.id), item);
-    });
-    await batch.commit();
+    const batchSize = 500;
+    try {
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = data.slice(i, i + batchSize);
+        chunk.forEach(item => {
+          if (item.id) batch.set(doc(db, 'skpds', item.id), item);
+        });
+        await batch.commit();
+      }
+    } catch (err) {
+      handleFirestoreError(err, 'write', 'skpds/bulk');
+      throw err;
+    }
   };
   const deleteSKPD = async (id: string) => {
-    await deleteDoc(doc(db, 'skpds', id));
+    try {
+      await deleteDoc(doc(db, 'skpds', id));
+    } catch (err) {
+      handleFirestoreError(err, 'delete', `skpds/${id}`);
+      throw err;
+    }
   };
   const deleteAllSKPDs = async () => {
-    const snapshot = await getDocs(collection(db, 'skpds'));
-    const batch = writeBatch(db);
-    snapshot.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+    try {
+      const snapshot = await getDocs(collection(db, 'skpds'));
+      const batchSize = 500;
+      const docs = snapshot.docs;
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = docs.slice(i, i + batchSize);
+        chunk.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (err) {
+      handleFirestoreError(err, 'delete', 'skpds/all');
+      throw err;
+    }
   };
 
   // Anggaran Operations
   const saveAnggaran = async (data: Partial<Anggaran>) => {
     if (!data.id) return;
-    await setDoc(doc(db, 'anggarans', data.id), data);
+    try {
+      await setDoc(doc(db, 'anggarans', data.id), data);
+    } catch (err) {
+      handleFirestoreError(err, 'write', `anggarans/${data.id}`);
+      throw err;
+    }
   };
   const saveAnggaransBulk = async (data: Partial<Anggaran>[]) => {
     const batchSize = 500;
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = writeBatch(db);
-      const chunk = data.slice(i, i + batchSize);
-      chunk.forEach(item => {
-        if (item.id) batch.set(doc(db, 'anggarans', item.id), item);
-      });
-      await batch.commit();
+    try {
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = data.slice(i, i + batchSize);
+        chunk.forEach(item => {
+          if (item.id) batch.set(doc(db, 'anggarans', item.id), item);
+        });
+        await batch.commit();
+      }
+    } catch (err) {
+      handleFirestoreError(err, 'write', 'anggarans/bulk');
+      throw err;
     }
   };
   const deleteAnggaran = async (id: string) => {
-    await deleteDoc(doc(db, 'anggarans', id));
+    try {
+      await deleteDoc(doc(db, 'anggarans', id));
+    } catch (err) {
+      handleFirestoreError(err, 'delete', `anggarans/${id}`);
+      throw err;
+    }
   };
   const deleteAllAnggarans = async () => {
-    const snapshot = await getDocs(collection(db, 'anggarans'));
-    const batch = writeBatch(db);
-    snapshot.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+    try {
+      const snapshot = await getDocs(collection(db, 'anggarans'));
+      const batchSize = 500;
+      const docs = snapshot.docs;
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = docs.slice(i, i + batchSize);
+        chunk.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (err) {
+      handleFirestoreError(err, 'delete', 'anggarans/all');
+      throw err;
+    }
   };
 
   // Realisasi Operations
   const saveRealisasi = async (data: Partial<Realisasi>) => {
     if (!data.id) return;
-    await setDoc(doc(db, 'realisasis', data.id), data);
+    try {
+      await setDoc(doc(db, 'realisasis', data.id), data);
+    } catch (err) {
+      handleFirestoreError(err, 'write', `realisasis/${data.id}`);
+      throw err;
+    }
   };
   const saveRealisasisBulk = async (data: Partial<Realisasi>[]) => {
     const batchSize = 500;
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = writeBatch(db);
-      const chunk = data.slice(i, i + batchSize);
-      chunk.forEach(item => {
-        if (item.id) batch.set(doc(db, 'realisasis', item.id), item);
-      });
-      await batch.commit();
+    try {
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = data.slice(i, i + batchSize);
+        chunk.forEach(item => {
+          if (item.id) batch.set(doc(db, 'realisasis', item.id), item);
+        });
+        await batch.commit();
+      }
+    } catch (err) {
+      handleFirestoreError(err, 'write', 'realisasis/bulk');
+      throw err;
     }
   };
   const deleteRealisasi = async (id: string) => {
-    await deleteDoc(doc(db, 'realisasis', id));
+    try {
+      await deleteDoc(doc(db, 'realisasis', id));
+    } catch (err) {
+      handleFirestoreError(err, 'delete', `realisasis/${id}`);
+      throw err;
+    }
   };
   const deleteAllRealisasi = async () => {
-    const snapshot = await getDocs(collection(db, 'realisasis'));
-    const batch = writeBatch(db);
-    snapshot.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+    try {
+      const snapshot = await getDocs(collection(db, 'realisasis'));
+      const batchSize = 500;
+      const docs = snapshot.docs;
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = docs.slice(i, i + batchSize);
+        chunk.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (err) {
+      handleFirestoreError(err, 'delete', 'realisasis/all');
+      throw err;
+    }
   };
 
   return (

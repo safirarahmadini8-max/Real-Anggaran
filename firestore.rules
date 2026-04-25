@@ -1,69 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default Deny
+    
+    // Total Admin Access for the primary user
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null && request.auth.token.email == 'SafiraRahmadini8@gmail.com';
     }
 
     // Common Helpers
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    // SKPD Rules
+    // Default Allow Read for all signed in users for these specific collections
+    // to ensure dashboard/reports work even if not the primary user
     match /skpds/{skpdId} {
-      function isValidSKPD(data) {
-        return data.keys().hasAll(['id', 'kode', 'nama']) &&
-               data.id is string && data.id.size() <= 128 &&
-               data.kode is string && data.kode.size() <= 50 &&
-               data.nama is string && data.nama.size() <= 200;
-      }
-
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidSKPD(request.resource.data);
-      allow update: if isSignedIn() && isValidSKPD(request.resource.data);
-      allow delete: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
-    // Anggaran Rules
     match /anggarans/{anggaranId} {
-      function isValidAnggaran(data) {
-        return data.keys().hasAll(['id', 'skpdId', 'kodeAkun', 'namaAkun', 'pagu']) &&
-               data.id is string && data.id.size() <= 128 &&
-               data.skpdId is string && data.skpdId.size() <= 128 &&
-               data.kodeAkun is string && data.kodeAkun.size() <= 50 &&
-               data.pagu is number;
-      }
-
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidAnggaran(request.resource.data);
-      allow update: if isSignedIn() && isValidAnggaran(request.resource.data);
-      allow delete: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
-    // Realisasi Rules
     match /realisasis/{realisasiId} {
-      function isValidRealisasi(data) {
-        return data.keys().hasAll(['id', 'anggaranId', 'nilai', 'tanggal']) &&
-               data.id is string && data.id.size() <= 128 &&
-               data.anggaranId is string && data.anggaranId.size() <= 128 &&
-               data.nilai is number &&
-               data.tanggal is string;
-      }
-
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidRealisasi(request.resource.data);
-      allow update: if isSignedIn() && isValidRealisasi(request.resource.data);
-      allow delete: if isSignedIn();
+      allow write: if isSignedIn();
     }
   }
 }

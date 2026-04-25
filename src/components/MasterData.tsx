@@ -345,9 +345,16 @@ export default function MasterData() {
                 : 'Apakah Anda yakin ingin menghapus SEMUA data Anggaran?';
               if (window.confirm(msg + ' Tindakan ini tidak dapat dibatalkan.')) {
                 setIsSaving(true);
-                if (tab === 'skpd') await deleteAllSKPDs();
-                else await deleteAllAnggarans();
-                setIsSaving(false);
+                try {
+                  if (tab === 'skpd') await deleteAllSKPDs();
+                  else await deleteAllAnggarans();
+                } catch (err: any) {
+                   console.error("Delete all error:", err);
+                   const errorMsg = err.message || "Terjadi kesalahan sistem";
+                   alert(`Gagal menghapus data: ${errorMsg}`);
+                } finally {
+                   setIsSaving(false);
+                }
               }
             }}
             disabled={isSaving || (tab === 'skpd' ? skpds.length === 0 : anggarans.length === 0)}

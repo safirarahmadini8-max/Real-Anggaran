@@ -291,9 +291,10 @@ export default function Transactions() {
                 setIsDeleting(true);
                 try {
                   await deleteAllRealisasi();
-                } catch (error) {
+                } catch (error: any) {
                   console.error("Delete all error:", error);
-                  alert("Gagal menghapus data. Silakan coba lagi.");
+                  const errorMsg = error.message || "Terjadi kesalahan sistem";
+                  alert(`Gagal menghapus data: ${errorMsg}`);
                 } finally {
                   setIsDeleting(false);
                 }
